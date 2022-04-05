@@ -40,7 +40,7 @@ abstract class IA {
 		IA instance = null;
 		String name = Configuration.instance().lis("IA");
 		try {
-			instance = (IA) ClassLoader.getSystemClassLoader().loadClass(name).newInstance();
+			instance = (IA) ClassLoader.getSystemClassLoader().loadClass(name).getDeclaredConstructor().newInstance();
 			instance.jeu = j;
 		} catch (Exception e) {
 			Configuration.instance().logger().severe("Impossible de trouver l'IA : " + name);

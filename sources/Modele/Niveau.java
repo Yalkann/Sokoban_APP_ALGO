@@ -39,7 +39,7 @@ public class Niveau implements Cloneable {
 	int[][] cases;
 	String nom;
 	int pousseurL, pousseurC;
-	int nbButs;
+	public int nbButs;
 	int nbCaissesSurBut;
 
 	Niveau() {
