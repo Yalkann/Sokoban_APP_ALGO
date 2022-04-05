@@ -1,4 +1,5 @@
-package Structures;/*
+
+/*
  * Sokoban - Encore une nouvelle version (à but pédagogique) du célèbre jeu
  * Copyright (C) 2018 Guillaume Huard
  * 
@@ -25,43 +26,46 @@ package Structures;/*
  *          38401 Saint Martin d'Hères
  */
 
-import Structures.Couple;
-import Structures.FAP;
-import Structures.FAPListe;
-import Structures.FAPTableau;
+package Structures;
 
+import Structures.FAPListe;
+import Structures.FAP;
 import java.util.Random;
 
-public class TestFap {
+public class TestFAP {
 	public static void main(String[] args) {
+		int min = 0;
+		int[] count = new int[100];
 		Random r = new Random();
-		FAP<Couple<Double, Integer>> f1, f2;
-		f1 = new FAPListe<>();
-		f2 = new FAPTableau<>();
+		FAP<Integer> f = new FAPListe<>();
+		FAP<Integer> g = new FAPTableau<>();
 
-		assert (f1.estVide());
-		assert (f2.estVide());
-		for (int i = 0; i < 100; i++) {
-			int code = r.nextInt(2);
-			switch(code) {
-				case 0:
-					Couple<Double, Integer> cp = new Couple<>(r.nextDouble(), r.nextInt(10));
-					System.out.println("Insertion de " + cp);
-					f1.insere(cp);
-					f2.insere(cp);
-					break;
-				case 1:
-					if (f1.estVide() || f2.estVide()) {
-						assert (f1.estVide());
-						assert (f2.estVide());
-						System.out.println("Impossible d'extraire : FAP vide");
-					} else {
-						Couple<Double, Integer> cp1 = f1.extrait();
-						Couple<Double, Integer> cp2 = f2.extrait();
-						assert(cp1.equals(cp2));
-						System.out.println("Extraction de " + cp1);
-					}
-					break;
+		assert (f.estVide());
+		assert (g.estVide());
+		for (int i = 0; i < 10000; i++) {
+			if (r.nextBoolean()) {
+				int val = r.nextInt(count.length);
+				System.out.println("Insertion de " + val + " (Tableau et Liste)");
+				f.insere(val);
+				g.insere(val);
+				assert (!f.estVide());
+				assert (!g.estVide());
+				if (val < min)
+					min = val;
+				count[val]++;
+			} else {
+				if (!f.estVide()) {
+					assert (!g.estVide());
+					int val = f.extrait();
+					int val2 = g.extrait();
+					assert (val == val2);
+					count[val]--;
+					assert (count[val] >= 0);
+					assert (val >= min);
+					if (val > min)
+						min = val;
+					System.out.println("Extraction de " + val + " (Tableau et Liste)");
+				}
 			}
 		}
 	}

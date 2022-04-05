@@ -1,102 +1,56 @@
 package Vue;
+/*
+ * Sokoban - Encore une nouvelle version (à but pédagogique) du célèbre jeu
+ * Copyright (C) 2018 Guillaume Huard
+ *
+ * Ce programme est libre, vous pouvez le redistribuer et/ou le
+ * modifier selon les termes de la Licence Publique Générale GNU publiée par la
+ * Free Software Foundation (version 2 ou bien toute autre version ultérieure
+ * choisie par vous).
+ *
+ * Ce programme est distribué car potentiellement utile, mais SANS
+ * AUCUNE GARANTIE, ni explicite ni implicite, y compris les garanties de
+ * commercialisation ou d'adaptation dans un but spécifique. Reportez-vous à la
+ * Licence Publique Générale GNU pour plus de détails.
+ *
+ * Vous devez avoir reçu une copie de la Licence Publique Générale
+ * GNU en même temps que ce programme ; si ce n'est pas le cas, écrivez à la Free
+ * Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
+ * États-Unis.
+ *
+ * Contact:
+ *          Guillaume.Huard@imag.fr
+ *          Laboratoire LIG
+ *          700 avenue centrale
+ *          Domaine universitaire
+ *          38401 Saint Martin d'Hères
+ */
 
 import Modele.Jeu;
-import Patterns.Observateur;
 
 import javax.swing.*;
 import java.awt.*;
 
-public class InterfaceGraphique implements Runnable, Observateur, InterfaceUtilisateur {
-	Jeu jeu;
-	CollecteurEvenements controle;
-	boolean maximized;
+// L'interface runnable déclare une méthode run
+public class InterfaceGraphique implements Runnable, InterfaceUtilisateur {
+	Jeu j;
+	CollecteurEvenements control;
 	JFrame frame;
-	NiveauGraphiqueSwing ng;
-	JLabel nbPas, nbPoussees;
-	JToggleButton IA, anim;
-	JButton annuler, refaire;
+	NiveauGraphique niv;
+	boolean maximized;
 
-	InterfaceGraphique(Jeu j, CollecteurEvenements c) {
-		jeu = j;
-		jeu.ajouteObservateur(this);
-		controle = c;
+	InterfaceGraphique(Jeu jeu, CollecteurEvenements c) {
+		j = jeu;
+		control = c;
 	}
 
 	public static void demarrer(Jeu j, CollecteurEvenements c) {
-		SwingUtilities.invokeLater(new InterfaceGraphique(j, c));
+		InterfaceGraphique vue = new InterfaceGraphique(j, c);
+		c.ajouteInterfaceUtilisateur(vue);
+		SwingUtilities.invokeLater(vue);
 	}
 
-	private JLabel createLabel(String s) {
-		JLabel lab = new JLabel(s);
-		lab.setAlignmentX(Component.CENTER_ALIGNMENT);
-		return lab;
-	}
-
-	private JToggleButton createToggleButton(String s, String c) {
-		JToggleButton but = new JToggleButton(s);
-		but.addActionListener(new AdaptateurCommande(controle, c));
-		but.setAlignmentX(Component.CENTER_ALIGNMENT);
-		but.setFocusable(false);
-		return but;
-	}
-
-	private JButton createButton(String s, String c) {
-		JButton but = new JButton(s);
-		but.addActionListener(new AdaptateurCommande(controle, c));
-		but.setAlignmentX(Component.CENTER_ALIGNMENT);
-		but.setFocusable(false);
-		return but;
-	}
-
-	public void run() {
-		frame = new JFrame("Sokoban");
-		ng = new NiveauGraphiqueSwing(jeu);
-		frame.add(ng);
-
-		// Décompte des pas et poussées
-		Box barreLaterale = Box.createVerticalBox();
-		barreLaterale.add(createLabel("Sokoban"));
-		barreLaterale.add(Box.createGlue());
-		nbPas = createLabel("Pas : 0");
-		barreLaterale.add(nbPas);
-		nbPoussees = createLabel("Poussees : 0");
-		barreLaterale.add(nbPoussees);
-
-		// Boutons de contrôle
-		IA = createToggleButton("IA", "ia");
-		barreLaterale.add(IA);
-		anim = createToggleButton("Animations", "pause");
-		barreLaterale.add(anim);
-		JButton prochain = createButton("Prochain", "next");
-		barreLaterale.add(prochain);
-
-		// Annuler / Refaire
-		Box annulRef = Box.createHorizontalBox();
-		annuler = createButton("<", "annule");
-		annuler.setEnabled(false);
-		refaire = new BoutonRefaire(">", "refaire", controle, jeu);
-		refaire.setEnabled(false);
-		annulRef.add(annuler);
-		annulRef.add(refaire);
-		barreLaterale.add(annulRef);
-
-		barreLaterale.add(Box.createGlue());
-		barreLaterale.add(createLabel("Copyright GH"));
-		frame.add(barreLaterale, BorderLayout.LINE_END);
-
-		ng.addMouseListener(new AdaptateurSouris(ng, controle));
-		frame.addKeyListener(new AdaptateurClavier(controle));
-		Timer time = new Timer(16, new AdaptateurTemps(controle));
-		time.start();
-		controle.fixerInterfaceUtilisateur(this);
-
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.setSize(500, 300);
-		frame.setVisible(true);
-	}
-
-	@Override
-	public void basculePleinEcran() {
+	public void toggleFullscreen() {
 		GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
 		GraphicsDevice device = env.getDefaultScreenDevice();
 		if (maximized) {
@@ -108,36 +62,34 @@ public class InterfaceGraphique implements Runnable, Observateur, InterfaceUtili
 		}
 	}
 
-	@Override
-	public void decale(double dL, double dC, int l, int c) {
-		ng.decale(dL, dC, l, c);
+	public void run() {
+		// Eléments de l'interface
+		frame = new JFrame("Ma fenetre a moi");
+		niv = new VueNiveau(j);
+
+		// Retransmission des évènements au contrôleur
+		niv.addMouseListener(new AdaptateurSouris(niv, control));
+		frame.addKeyListener(new AdaptateurClavier(control));
+		Timer chrono = new Timer(16, new AdaptateurTemps(control));
+
+		// Mise en place de l'interface
+		frame.add(niv);
+		chrono.start();
+
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.setSize(500, 300);
+		frame.setVisible(true);
 	}
 
-	@Override
-	public void etapePousseur() {
-		ng.etapePousseur();
+	public void decale(int l, int c, double dl, double dc) {
+		niv.decale(l, c, dl, dc);
 	}
 
-	@Override
-	public void changeDirectionPousseur(int dL, int dC) {
-		ng.changeDirectionPousseur(dL, dC);
+	public void metAJourDirection(int dL, int dC) {
+		niv.metAJourDirection(dL, dC);
 	}
 
-	@Override
-	public void changeEtatIA(boolean e) {
-		IA.setSelected(e);
-	}
-
-	@Override
-	public void changeEtatAnim(boolean e) {
-		anim.setSelected(e);
-	}
-
-	@Override
-	public void metAJour() {
-		nbPas.setText("Pas : " + jeu.niveau().nbPas());
-		nbPoussees.setText("Poussees : " + jeu.niveau().nbPoussees());
-		annuler.setEnabled(jeu.niveau().peutAnnuler());
-		ng.repaint();
+	public void changeEtape() {
+		niv.changeEtape();
 	}
 }
