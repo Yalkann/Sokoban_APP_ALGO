@@ -24,30 +24,19 @@
  *          Domaine universitaire
  *          38401 Saint Martin d'Hères
  */
-package Controleur;
 
-import Global.Configuration;
-import Modele.Coup;
-import Structures.Sequence;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
-class AnimationJeuAutomatique extends Animation {
-	IA joueur;
-	ControleurMediateur control;
-	Sequence<Coup> enAttente;
+public class EcouteurDeSouris extends MouseAdapter {
+	AnimationPousseur anim;
 
-	AnimationJeuAutomatique(int lenteur, IA j, ControleurMediateur c) {
-		super(lenteur);
-		joueur = j;
-		control = c;
+	EcouteurDeSouris(AnimationPousseur a) {
+		anim = a;
 	}
 
 	@Override
-	public void miseAJour() {
-		if ((enAttente == null) || enAttente.estVide())
-			enAttente = joueur.elaboreCoups();
-		if ((enAttente == null) || enAttente.estVide())
-			Configuration.instance().logger().severe("Bug : l'IA n'a joué aucun coup");
-		else
-			control.joue(enAttente.extraitTete());
+	public void mousePressed(MouseEvent e) {
+		anim.clic(e.getX(), e.getY());
 	}
 }

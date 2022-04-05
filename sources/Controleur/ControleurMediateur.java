@@ -2,208 +2,169 @@ package Controleur;
 
 import Global.Configuration;
 import Modele.Coup;
+import Modele.Deplacement;
 import Modele.Jeu;
-import Modele.Mouvement;
 import Structures.Iterateur;
 import Structures.Sequence;
 import Vue.CollecteurEvenements;
 import Vue.InterfaceUtilisateur;
 
-/*
- * Morpion pédagogique
-
- * Copyright (C) 2016 Guillaume Huard
-
- * Ce programme est libre, vous pouvez le redistribuer et/ou le
- * modifier selon les termes de la Licence Publique Générale GNU publiée par la
- * Free Software Foundation (version 2 ou bien toute autre version ultérieure
- * choisie par vous).
-
- * Ce programme est distribué car potentiellement utile, mais SANS
- * AUCUNE GARANTIE, ni explicite ni implicite, y compris les garanties de
- * commercialisation ou d'adaptation dans un but spécifique. Reportez-vous à la
- * Licence Publique Générale GNU pour plus de détails.
-
- * Vous devez avoir reçu une copie de la Licence Publique Générale
- * GNU en même temps que ce programme ; si ce n'est pas le cas, écrivez à la Free
- * Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
- * États-Unis.
-
- * Contact: Guillaume.Huard@imag.fr
- *          Laboratoire LIG
- *          700 avenue centrale
- *          Domaine universitaire
- *          38401 Saint Martin d'Hères
- */
-
 public class ControleurMediateur implements CollecteurEvenements {
-	Configuration config;
 	Jeu jeu;
-	InterfaceUtilisateur vue;
+	InterfaceUtilisateur inter;
 	Sequence<Animation> animations;
-	double vitesseAnimations;
-	int lenteurPas;
 	Animation mouvement;
-	boolean animationsSupportees, animationsActives;
-	int lenteurJeuAutomatique;
-	IA joueurAutomatique;
-	boolean IAActive;
-	AnimationJeuAutomatique animationIA;
+	boolean animationsActives, animationsSupportees;
+	boolean iaActive;
+	Animation ia;
 
 	public ControleurMediateur(Jeu j) {
-		config = Configuration.instance();
 		jeu = j;
-		animations = config.nouvelleSequence();
-		vitesseAnimations = Double.parseDouble(config.lis("VitesseAnimations"));
-		lenteurPas = Integer.parseInt(config.lis("LenteurPas"));
-		animations.insereTete(new AnimationPousseur(lenteurPas, this));
+		animations = Configuration.instance().nouvelleSequence();
 		mouvement = null;
-		// Tant qu'on ne reçoit pas d'évènement temporel, on n'est pas sur que les
-		// animations soient supportées (ex. interface textuelle)
+		animationsActives = Boolean.parseBoolean(Configuration.instance().lis("AnimationsActives"));
 		animationsSupportees = false;
-		animationsActives = false;
-		IAActive = false;
+		iaActive = Boolean.parseBoolean(Configuration.instance().lis("IAActive"));
+		ia = new AnimationIA(this, j);
 	}
 
 	@Override
-	public void clicSouris(int l, int c) {
-		int dL = l - jeu.lignePousseur();
-		int dC = c - jeu.colonnePousseur();
-		int sum = dC + dL;
-		sum = sum * sum;
-		if ((dC * dL == 0) && (sum == 1))
-			deplace(dL, dC);
-	}
-
-	void deplace(int dL, int dC) {
-		if (mouvement == null) {
-			Coup cp = jeu.creerCoup(dL, dC);
-			joue(cp);
-		}
-	}
-
-	private void testFin() {
-		if (jeu.niveauTermine()) {
-			if (IAActive)
-				joueurAutomatique.finalise();
-			jeu.prochainNiveau();
-			if (IAActive)
-				joueurAutomatique.activeIA();
-			if (jeu.jeuTermine())
-				System.exit(0);
-		}
-	}
-
-	@Override
-	public void toucheClavier(String touche) {
-		switch (touche) {
-			case "Left":
-				deplace(0, -1);
-				break;
-			case "Right":
-				deplace(0, 1);
-				break;
-			case "Up":
-				deplace(-1, 0);
-				break;
-			case "Down":
-				deplace(1, 0);
-				break;
-			case "Quit":
-				System.exit(0);
-				break;
-			case "Pause":
-				basculeAnimations();
-				break;
-			case "IA":
-				basculeIA();
-				break;
-			case "Full":
-				vue.toggleFullscreen();
-				break;
-			default:
-				System.out.println("Touche inconnue : " + touche);
-		}
-	}
-
-	@Override
-	public void ajouteInterfaceUtilisateur(InterfaceUtilisateur v) {
-		vue = v;
+	public void fixerInterfaceUtilisateur(InterfaceUtilisateur i) {
+		inter = i;
+		inter.changeEtatAnim(animationsActives);
+		inter.changeEtatIA(iaActive);
+		animations.insereQueue(new AnimationPousseur(inter));
 	}
 
 	@Override
 	public void tictac() {
-		// On sait qu'on supporte les animations si on reçoit des évènements temporels
-		if (!animationsSupportees) {
-			animationsSupportees = true;
-			animationsActives = Boolean.parseBoolean(config.lis("Animations"));
+		animationsSupportees = true;
+		if (iaActive && mouvement == null) {
+			ia.tictac();
 		}
-		// On traite l'IA séparément pour pouvoir l'activer même si les animations
-		// "esthétiques" sont désactivées
-		if (IAActive && (mouvement == null)) {
-			animationIA.tictac();
-		}
-		if (animationsActives) {
+		if (animationsActives || mouvement != null) {
 			Iterateur<Animation> it = animations.iterateur();
 			while (it.aProchain()) {
-				Animation a = it.prochain();
-				a.tictac();
-				if (a.estTerminee()) {
-					if (a == mouvement) {
-						testFin();
-						mouvement = null;
-					}
+				Animation anim = it.prochain();
+				anim.tictac();
+				if (anim.estTerminee()) {
 					it.supprime();
+					if (anim == mouvement) {
+						mouvement = null;
+						testFinNiveau();
+					}
 				}
 			}
 		}
 	}
 
-	public void changeEtape() {
-		vue.changeEtape();
+	void jouerCoup(Coup cp) {
+		jeu.jouerCoup(cp);
+		animeCoup(cp,1);
+		if (!animationsActives)
+			testFinNiveau();
 	}
 
-	public void basculeAnimations() {
-		if (animationsSupportees && (mouvement == null))
-			animationsActives = !animationsActives;
-	}
-
-	void joue(Coup cp) {
+	void animeCoup(Coup cp, int direction) {
 		if (cp != null) {
-			jeu.jouerCoup(cp);
-			// Mise à jour de la direction du pousseur (si le coup est inhabituel, construit par l'IA, il
-			// faut chercher le déplacement du pousseur)
-			Iterateur<Mouvement> it = cp.mouvements().iterateur();
+			Iterateur<Deplacement> it = cp.deplacements().iterateur();
 			while (it.aProchain()) {
-				Mouvement m = it.prochain();
-				if ((m.versL() == jeu.lignePousseur()) && (m.versC() == jeu.colonnePousseur())) {
-					int dL = m.versL() - m.depuisL();
-					int dC = m.versC() - m.depuisC();
-					// On ne tient pas compte des téléportations
-					if (dL * dL + dC * dC == 1)
-						vue.metAJourDirection(dL, dC);
+				Deplacement d = it.prochain();
+				int pousseurL = jeu.pousseurL();
+				int pousseurC = jeu.pousseurC();
+				int dest = (direction + 1) / 2;
+				if ((d.l[dest] == pousseurL) && (d.c[dest] == pousseurC)) {
+					int dL = d.l[1] - d.l[0];
+					int dC = d.c[1] - d.c[0];
+					inter.changeDirectionPousseur(dL, dC);
 				}
 			}
-			if (animationsActives) {
-				mouvement = new AnimationCoup(vue, cp, vitesseAnimations);
+			if (animationsActives && animationsSupportees) {
+				mouvement = new AnimationCoup(cp, inter, direction);
 				animations.insereQueue(mouvement);
-			} else
-				testFin();
+			}
 		}
 	}
 
-	public void basculeIA() {
-		if (animationsSupportees) {
-			IAActive = !IAActive;
-			if (joueurAutomatique == null) {
-				lenteurJeuAutomatique = Integer.parseInt(Configuration.instance().lis("LenteurJeuAutomatique"));
-				joueurAutomatique = IA.nouvelle(jeu);
-				animationIA = new AnimationJeuAutomatique(lenteurJeuAutomatique, joueurAutomatique, this);
+	void deplace(int dL, int dC) {
+		if (mouvement == null) {
+			Coup cp = jeu.determinerCoup(dL, dC);
+			if (cp != null) {
+				jouerCoup(cp);
 			}
-			if (IAActive)
-				joueurAutomatique.activeIA();
-			else
-				joueurAutomatique.finalise();
 		}
+	}
+
+	void testFinNiveau() {
+		if (jeu.niveau().estTermine())
+			if (!jeu.prochainNiveau())
+				System.exit(0);
+	}
+
+	@Override
+	// Clic dans la case (l, c)
+	public void clicSouris(int l, int c) {
+		Configuration.instance().logger().info("Clic dans la case (" + c + ", " + l +")");
+		int dC = c - jeu.pousseurC();
+		int dL = l - jeu.pousseurL();
+		int sum = dC+dL;
+		sum = sum*sum;
+		if ((dC*dL == 0) && (sum == 1)) {
+			deplace(dL, dC);
+		}
+	}
+
+	void annule() {
+		Coup cp = jeu.annule();
+		animeCoup(cp, -1);
+	}
+
+	void refaire() {
+		Coup cp = jeu.refaire();
+		animeCoup(cp, 1);
+	}
+
+	@Override
+	public boolean commande(String c) {
+		switch (c) {
+			case "up":
+				deplace(-1, 0);
+				break;
+			case "down":
+				deplace(1, 0);
+				break;
+			case "left":
+				deplace(0, -1);
+				break;
+			case "right":
+				deplace(0, 1);
+				break;
+			case "quit":
+				System.exit(0);
+				break;
+			case "annule":
+				annule();
+				break;
+			case "refaire":
+				refaire();
+				break;
+			case "pause":
+				animationsActives = !animationsActives;
+				inter.changeEtatAnim(animationsActives);
+				break;
+			case "fullscreen":
+				inter.basculePleinEcran();
+				break;
+			case "ia":
+				iaActive = !iaActive;
+				inter.changeEtatIA(iaActive);
+				break;
+			case "next":
+				jeu.prochainNiveau();
+				break;
+			default:
+				return false;
+		}
+		return true;
 	}
 }

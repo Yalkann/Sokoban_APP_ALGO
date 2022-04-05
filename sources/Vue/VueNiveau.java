@@ -1,4 +1,6 @@
-package Vue;/*
+package Vue;
+
+/*
  * Sokoban - Encore une nouvelle version (à but pédagogique) du célèbre jeu
  * Copyright (C) 2018 Guillaume Huard
  *
@@ -29,163 +31,113 @@ import Global.Configuration;
 import Modele.Jeu;
 import Modele.Niveau;
 
+import java.io.File;
 import java.io.InputStream;
 
-public class VueNiveau extends NiveauGraphique {
-	ImageSokoban pousseur, mur, sol, caisse, but, caisseSurBut;
-	Jeu j;
-	int hauteurCase, largeurCase;
-	// Décalage des éléments (pour pouvoir les animer)
-	Vecteur[][] decalages;
-	// Images du pousseur (pour l'animation)
-	ImageSokoban[][] pousseurs;
-	int direction, etape;
+class VueNiveau {
+	Jeu jeu;
+	ImageSokoban but, caisse, caisseSurBut, mur, pousseur, sol;
+	int largeurCase, hauteurCase;
+	NiveauGraphique ng;
+	double [][] dL;
+	double [][] dC;
+	ImageSokoban [][] pousseurs;
+	int etape, direction;
 
-	VueNiveau(Jeu jeu) {
-		j = jeu;
-		j.ajouteObservateur(this);
-		mur = lisImage("Mur");
-		sol = lisImage("Sol");
-		caisse = lisImage("Caisse");
-		but = lisImage("But");
-		caisseSurBut = lisImage("CaisseSurBut");
+	private ImageSokoban chargeImage(String nom) {
+		ImageSokoban img = null;
+		InputStream in = Configuration.charge("Images" + File.separator + nom + ".png");
+		return ImageSokoban.getImageSokoban(in);
+	}
+
+	public VueNiveau(Jeu j, NiveauGraphique n) {
+		but = chargeImage("But");
+		caisse = chargeImage("Caisse");
+		caisseSurBut = chargeImage("Caisse_sur_but");
+		mur = chargeImage("Mur");
+		sol = chargeImage("Sol");
+		jeu = j;
+		ng = n;
 
 		pousseurs = new ImageSokoban[4][4];
-		for (int d = 0; d < pousseurs.length; d++)
-			for (int i = 0; i < pousseurs[0].length; i++)
-				pousseurs[d][i] = lisImage("Pousseur_" + d + "_" + i);
+		for (int i=0; i<4; i++)
+			for (int k=0; k<4; k++) {
+				pousseurs[i][k] = chargeImage("Pousseur_" + i + "_" + k);
+			}
 		etape = 0;
 		direction = 2;
-		metAJourPousseur();
+		pousseur = pousseurs[direction][etape];
 	}
 
-	private ImageSokoban lisImage(String nom) {
-		String ressource = Configuration.instance().lis(nom);
-		Configuration.instance().logger().info("Lecture de l'image " + ressource + " comme " + nom);
-		InputStream in = Configuration.charge(ressource);
-		try {
-			// Chargement d'une image utilisable dans Swing
-			return super.lisImage(in);
-		} catch (Exception e) {
-			Configuration.instance().logger().severe("Impossible de charger l'image " + ressource);
-			System.exit(1);
+	void tracerNiveau() {
+		Niveau niv = jeu.niveau();
+		largeurCase = ng.largeur() / niv.colonnes();
+		hauteurCase = ng.hauteur() / niv.lignes();
+		largeurCase = Math.min(largeurCase, hauteurCase);
+		hauteurCase = largeurCase;
+
+		if ((dL == null) || (dL.length < ng.hauteur()) || (dL[0].length < ng.largeur())) {
+			dL = new double[ng.hauteur()][ng.largeur()];
+			dC = new double[ng.hauteur()][ng.largeur()];
 		}
-		return null;
+		for (int i = 0; i<niv.colonnes(); i++)
+			for (int j=0; j<niv.lignes(); j++) {
+				int x = i * largeurCase;
+				int y = j * hauteurCase;
+				if (niv.aBut(j, i))
+					ng.tracerImage(but, x, y, largeurCase, hauteurCase);
+				else
+					ng.tracerImage(sol, x, y, largeurCase, hauteurCase);
+				int marque = niv.marque(j, i);
+				if (marque != 0)
+					ng.tracerCroix(marque, x, y, largeurCase, hauteurCase);
+			}
+		for (int i = 0; i<niv.colonnes(); i++)
+			for (int j=0; j<niv.lignes(); j++) {
+				int x = (int) Math.round(i * largeurCase + dC[j][i] * largeurCase);
+				int y = (int) Math.round(j * hauteurCase + dL[j][i] * hauteurCase);
+				if (niv.aMur(j, i))
+					ng.tracerImage(mur, x, y, largeurCase, hauteurCase);
+				else if (niv.aCaisse(j,i)) {
+					if (niv.aBut(j, i))
+						ng.tracerImage(caisseSurBut, x, y, largeurCase, hauteurCase);
+					else
+						ng.tracerImage(caisse, x, y, largeurCase, hauteurCase);
+					int marque = niv.marque(j, i);
+					if (marque != 0)
+						ng.tracerCroix(marque, x, y, largeurCase, hauteurCase);
+				} else if (niv.aPousseur(j, i))
+					ng.tracerImage(pousseur, x, y, largeurCase, hauteurCase);
+			}
 	}
 
-	@Override
-	int hauteurCase() {
-		return hauteurCase;
-	}
-
-	@Override
 	int largeurCase() {
 		return largeurCase;
 	}
 
-	@Override
-	public void decale(int l, int c, double dl, double dc) {
-		if ((dl != 0) || (dc != 0)) {
-			Vecteur v = decalages[l][c];
-			if (v == null) {
-				v = new Vecteur();
-				decalages[l][c] = v;
-			}
-			v.x = dc;
-			v.y = dl;
-		} else {
-			decalages[l][c] = null;
-		}
-		miseAJour();
+	int hauteurCase() {
+		return hauteurCase;
 	}
 
-	@Override
-	void tracerNiveau() {
-		Niveau n = j.niveau();
-
-		largeurCase = largeur() / n.colonnes();
-		hauteurCase = hauteur() / n.lignes();
-		// On prend des cases carrées
-		largeurCase = Math.min(largeurCase, hauteurCase);
-		hauteurCase = largeurCase;
-
-		// Le vecteur de décalages doit être conforme au niveau
-		if ((decalages == null) || (decalages.length != n.lignes()) || (decalages[0].length != n.colonnes()))
-			decalages = new Vecteur[n.lignes()][n.colonnes()];
-
-		// Tracé du niveau
-		// En deux étapes à cause des décalages possibles
-		for (int ligne = 0; ligne < n.lignes(); ligne++)
-			for (int colonne = 0; colonne < n.colonnes(); colonne++) {
-				int x = colonne * largeurCase;
-				int y = ligne * hauteurCase;
-				int marque = n.marque(ligne, colonne);
-				// Tracé du sol
-				if (n.aBut(ligne, colonne))
-					tracer(but, x, y, largeurCase, hauteurCase);
-				else
-					tracer(sol, x, y, largeurCase, hauteurCase);
-				if (marque > 0)
-					tracerCroix(marque, x, y, largeurCase, hauteurCase);
-			}
-		for (int ligne = 0; ligne < n.lignes(); ligne++)
-			for (int colonne = 0; colonne < n.colonnes(); colonne++) {
-				int x = colonne * largeurCase;
-				int y = ligne * hauteurCase;
-				int marque = n.marque(ligne, colonne);
-				Vecteur decal = decalages[ligne][colonne];
-				if (decal != null) {
-					x += decal.x * largeurCase;
-					y += decal.y * hauteurCase;
-				}
-				// Tracé des objets, on enlève les tests exclusifs pour voir les bugs éventuels
-				// de déplacement causés par l'IA
-				if (n.aMur(ligne, colonne))
-					tracer(mur, x, y, largeurCase, hauteurCase);
-				if (n.aCaisse(ligne, colonne)) {
-					if (n.aBut(ligne, colonne))
-						tracer(caisseSurBut, x, y, largeurCase, hauteurCase);
-					else
-						tracer(caisse, x, y, largeurCase, hauteurCase);
-					if (marque > 0)
-						tracerCroix(marque, x, y, largeurCase, hauteurCase);
-				}
-				if (n.aPousseur(ligne, colonne))
-					tracer(pousseur, x, y, largeurCase, hauteurCase);
-			}
-
+	void fixerDecalage(double dL, double dC, int l, int c) {
+		this.dL[l][c] = dL;
+		this.dC[l][c] = dC;
 	}
 
-	// Animation du pousseur
-	void metAJourPousseur() {
+	void etapePousseur() {
+		etape = (etape+1) % 4;
 		pousseur = pousseurs[direction][etape];
 	}
 
-	@Override
-	public void metAJourDirection(int dL, int dC) {
-		switch (dL + 2 * dC) {
-			case -2:
-				direction = 1;
-				break;
-			case -1:
-				direction = 0;
-				break;
-			case 1:
-				direction = 2;
-				break;
-			case 2:
-				direction = 3;
-				break;
-			default:
-				Configuration.instance().logger().severe("Bug interne, direction invalide");
-		}
-		metAJourPousseur();
-	}
-
-	@Override
-	public void changeEtape() {
-		etape = (etape + 1) % pousseurs[direction].length;
-		metAJourPousseur();
-		miseAJour();
+	void changeDirectionPousseur(int dL, int dC) {
+		if (dL > 0)
+			direction = 2;
+		else if (dL < 0)
+			direction = 0;
+		else if (dC > 0)
+			direction = 3;
+		else
+			direction = 1;
+		pousseur = pousseurs[direction][etape];
 	}
 }

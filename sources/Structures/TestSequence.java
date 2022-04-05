@@ -1,34 +1,11 @@
-/*
- * Sokoban - Encore une nouvelle version (à but pédagogique) du célèbre jeu
- * Copyright (C) 2018 Guillaume Huard
- * 
- * Ce programme est libre, vous pouvez le redistribuer et/ou le
- * modifier selon les termes de la Licence Publique Générale GNU publiée par la
- * Free Software Foundation (version 2 ou bien toute autre version ultérieure
- * choisie par vous).
- * 
- * Ce programme est distribué car potentiellement utile, mais SANS
- * AUCUNE GARANTIE, ni explicite ni implicite, y compris les garanties de
- * commercialisation ou d'adaptation dans un but spécifique. Reportez-vous à la
- * Licence Publique Générale GNU pour plus de détails.
- * 
- * Vous devez avoir reçu une copie de la Licence Publique Générale
- * GNU en même temps que ce programme ; si ce n'est pas le cas, écrivez à la Free
- * Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
- * États-Unis.
- * 
- * Contact:
- *          Guillaume.Huard@imag.fr
- *          Laboratoire LIG
- *          700 avenue centrale
- *          Domaine universitaire
- *          38401 Saint Martin d'Hères
- */
-
 package Structures;
 
+import Structures.Iterateur;
+import Structures.Sequence;
+import Structures.SequenceListe;
+import Structures.SequenceTableau;
+
 import java.util.Random;
-import Global.Configuration;
 
 public class TestSequence {
 	static int min, max, count;
@@ -88,17 +65,20 @@ public class TestSequence {
 
 	public static void main(String[] args) {
 		Random r = new Random();
-		Sequence<Integer> s;
-		s = Configuration.instance().nouvelleSequence();
+		Sequence<Integer> s1, s2;
+		s1 = new SequenceTableau<>();
+		s2 = new SequenceListe<>();
 
-		assert (s.estVide());
+		assert (s1.estVide());
+		assert (s2.estVide());
 		min = -1;
 		max = 0;
 		count = 0;
 		for (int i = 0; i < 100; i++) {
 			int code = r.nextInt(4);
 			int pos = (count > 0) ? r.nextInt(count) : -1;
-			int r1 = operation(s, code, pos);
+			int r1 = operation(s1, code, pos);
+			int r2 = operation(s2, code, pos);
 			if (code < 2) {
 				count++;
 				if (code < 1)
@@ -116,6 +96,8 @@ public class TestSequence {
 					count--;
 				}
 			}
+
+			assert (r1 == r2);
 		}
 	}
 }

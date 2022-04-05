@@ -1,6 +1,3 @@
-Use this file to create your own levels to test your implementation.
-We provide some examples.
-
 
 ######     ######
 #    #     #    #
