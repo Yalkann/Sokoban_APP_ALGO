@@ -29,6 +29,9 @@ package Controleur;
 import Global.Configuration;
 import Modele.Coup;
 import Structures.Sequence;
+import Controleur.CalculChemin;
+import Structures.Etats;
+import Modele.Niveau;
 
 import java.util.Random;
 import java.util.logging.Logger;
@@ -36,6 +39,8 @@ import java.util.logging.Logger;
 class IAAssistance extends IA {
 	Random r;
 	Logger logger;
+	Etats depart;
+	Sequence<Integer> moves;
 
 	public IAAssistance() {
 		r = new Random();
@@ -45,40 +50,49 @@ class IAAssistance extends IA {
 	public void initialise() {
 		logger = Configuration.instance().logger();
 		logger.info("Démarrage de l'IA sur un niveau de taille " + niveau.lignes() + "x" + niveau.colonnes());
+		depart = new Etats(niveau);
+		moves = CalculChemin.Dijkstra(depart);
 	}
 
 	@Override
 	public Sequence<Coup> joue() {
 		Sequence<Coup> resultat = Configuration.instance().nouvelleSequence();
+		Coup coup = null;
+		boolean mur = true;
+		int dL = 0, dC = 0;
+		int nouveauL = 0;
+		int nouveauC = 0;
+
 		int pousseurL = niveau.lignePousseur();
 		int pousseurC = niveau.colonnePousseur();
-
-		// Ici, a titre d'exemple, on peut construire une séquence de coups
-		// qui sera jouée par l'AnimationJeuAutomatique
-		int nb = r.nextInt(5)+1;
-		logger.info("Constrution d'une séquence de " + nb + " coups");
-		for (int i = 0; i < nb; i++) {
-			// Mouvement du pousseur
-			Coup coup = new Coup();
-			boolean libre = false;
-			while (!libre) {
-				int nouveauL = r.nextInt(niveau.lignes());
-				int nouveauC = r.nextInt(niveau.colonnes());
-				if (niveau.estOccupable(nouveauL, nouveauC)) {
-					logger.info("Téléportation en (" + nouveauL + ", " + nouveauC + ") !");
-					coup.deplace(pousseurL, pousseurC, nouveauL, nouveauC);
-					resultat.insereQueue(coup);
-					pousseurL = nouveauL;
-					pousseurC = nouveauC;
-					libre = true;
-				}
+		// Mouvement du pousseur
+		while (mur) {
+			int direction = r.nextInt(2) * 2 - 1;
+			if (r.nextBoolean()) {
+				dL = direction;
+			} else {
+				dC = direction;
 			}
+			nouveauL = pousseurL + dL;
+			nouveauC = pousseurC + dC;
+			coup = niveau.creerCoup(dL, dC);
+			if (coup == null) {
+				if (niveau.aMur(nouveauL, nouveauC))
+					logger.info("Tentative de déplacement (" + dL + ", " + dC + ") heurte un mur");
+				else if (niveau.aCaisse(nouveauL, nouveauC))
+					logger.info("Tentative de déplacement (" + dL + ", " + dC + ") heurte une caisse non déplaçable");
+				else
+					logger.severe("Tentative de déplacement (" + dL + ", " + dC + "), erreur inconnue");
+				dL = dC = 0;
+			} else
+				mur = false;
 		}
+		resultat.insereQueue(coup);
 		return resultat;
 	}
 
 	@Override
 	public void finalise() {
-		logger.info("Fin des téléportations");
+		logger.info("Fin de traitement du niveau par l'IA");
 	}
 }
