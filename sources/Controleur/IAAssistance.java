@@ -36,9 +36,12 @@ import java.util.logging.Logger;
 class IAAssistance extends IA {
 	Random r;
 	Logger logger;
+	// Couleurs au format RGB (rouge, vert, bleu, un octet par couleur)
+	final static int VERT = 0x00CC00;
+	final static int MARRON = 0xBB7755;
 
 	public IAAssistance() {
-		r = new Random();
+		
 	}
 
 	@Override
@@ -49,36 +52,34 @@ class IAAssistance extends IA {
 
 	@Override
 	public Sequence<Coup> joue() {
+		Coup coup = null;
 		Sequence<Coup> resultat = Configuration.instance().nouvelleSequence();
+
 		int pousseurL = niveau.lignePousseur();
 		int pousseurC = niveau.colonnePousseur();
 
 		// Ici, a titre d'exemple, on peut construire une séquence de coups
 		// qui sera jouée par l'AnimationJeuAutomatique
-		int nb = r.nextInt(5)+1;
-		logger.info("Constrution d'une séquence de " + nb + " coups");
-		for (int i = 0; i < nb; i++) {
-			// Mouvement du pousseur
-			Coup coup = new Coup();
-			boolean libre = false;
-			while (!libre) {
-				int nouveauL = r.nextInt(niveau.lignes());
-				int nouveauC = r.nextInt(niveau.colonnes());
-				if (niveau.estOccupable(nouveauL, nouveauC)) {
-					logger.info("Téléportation en (" + nouveauL + ", " + nouveauC + ") !");
-					coup.deplace(pousseurL, pousseurC, nouveauL, nouveauC);
-					resultat.insereQueue(coup);
-					pousseurL = nouveauL;
-					pousseurC = nouveauC;
-					libre = true;
-				}
+		for (int i = 0; i<3; i++) {
+			coup = niveau.creerCoup(0, -1);
+			if (coup == null) {
+				if (niveau.aMur(pousseurL, pousseurC-1))
+					logger.info("Tentative de déplacement (" + -1 + ", " + 0 + ") heurte un mur");
+				else if (niveau.aCaisse(pousseurL-1, pousseurC))
+					logger.info("Tentative de déplacement (" + -1 + ", " + 0 + ") heurte une caisse non déplaçable");
+				else
+					logger.severe("Tentative de déplacement (" + -1 + ", " + 0 + "), erreur inconnue");
 			}
 		}
+
+		
+		
+		resultat.insereQueue(coup);
 		return resultat;
 	}
 
 	@Override
 	public void finalise() {
-		logger.info("Fin des téléportations");
+		logger.info("Fin de la résolution");
 	}
 }

@@ -26,8 +26,12 @@ package Modele;
  *          38401 Saint Martin d'Hères
  */
 
+import javax.naming.ConfigurationException;
+
 import Global.Configuration;
 import Structures.Iterateur;
+import Structures.Sequence;
+import Structures.SequenceTableau;
 
 public class Niveau implements Cloneable {
 	static final int VIDE = 0;
