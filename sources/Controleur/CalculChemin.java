@@ -2,23 +2,21 @@ package Controleur;
 
 import Structures.Sequence;
 import Structures.SequenceListe;
-import Structures.Etats;
-import Structures.FAP;
-import Modele.Coup;
-import Modele.Niveau;
+import Modele.Etat;
+
 import java.util.Hashtable;
 
 public class CalculChemin {
 
-    public static Sequence<Integer> Dijkstra(Etats start){
-        Hashtable<Etats,Etats> predList = new Hashtable<Etats,Etats>();
-        Sequence<Etats> queue = new SequenceListe<Etats>();
+    public static Sequence<Integer> Dijkstra(Etat start){
+        Hashtable<Etat, Etat> predList = new Hashtable<Etat, Etat>();
+        Sequence<Etat> queue = new SequenceListe<Etat>();
         Sequence<Integer> moveList = new SequenceListe<Integer>();
-        Sequence<Etats> succ;
+        Sequence<Etat> succ;
         predList.put(start,start);
         queue.insereQueue(start);
-        Etats courant, voisin, etatPred;
-        Etats finale = start;
+        Etat courant, voisin, etatPred;
+        Etat finale = start;
         boolean gagne = false;
         while(!queue.estVide()){
             courant = queue.extraitTete();

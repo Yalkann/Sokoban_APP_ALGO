@@ -29,29 +29,67 @@ package Controleur;
 import Global.Configuration;
 import Modele.Coup;
 import Structures.Sequence;
-import Controleur.CalculChemin;
-import Structures.Etats;
-import Modele.Niveau;
+import Modele.Etat;
+import Structures.SequenceListe;
 
+import java.util.Hashtable;
 import java.util.Random;
 import java.util.logging.Logger;
 
 class IAAssistance extends IA {
 	Random r;
 	Logger logger;
-	Etats depart;
+	Etat depart;
 	Sequence<Integer> moves;
 
 	public IAAssistance() {
 		r = new Random();
 	}
 
+	Sequence<Integer> Dijkstra(Etat start){
+		Hashtable<Etat, Etat> predList = new Hashtable<Etat, Etat>();
+		Sequence<Etat> queue = new SequenceListe<Etat>();
+		Sequence<Integer> moveList = new SequenceListe<Integer>();
+		Sequence<Etat> succ;
+		predList.put(start,start);
+		queue.insereQueue(start);
+		Etat courant, voisin, etatPred;
+		Etat finale = start;
+		boolean gagne = false;
+		while(!queue.estVide()){
+			courant = queue.extraitTete();
+			System.out.println("Calculating state player " + courant.positionPousseur + " box " + courant.positionsCaisses[0]);
+			if(courant.niv.estTermine()){
+				gagne = true;
+				finale = courant;
+				break;
+			}
+			succ = courant.successeurs();
+			while(!succ.estVide()){
+				voisin = succ.extraitTete();
+				if(!predList.containsKey(voisin)){
+					predList.put(voisin,courant);
+					queue.insereQueue(voisin);
+				}
+			}
+		}
+		if(gagne){
+			etatPred = predList.get(finale);
+			moveList.insereTete(finale.lastMove);
+			while(etatPred != predList.get(etatPred)){
+				moveList.insereTete(etatPred.lastMove);
+				etatPred = predList.get(etatPred);
+			}
+		}
+		return moveList;
+	}
+
 	@Override
 	public void initialise() {
 		logger = Configuration.instance().logger();
 		logger.info("Démarrage de l'IA sur un niveau de taille " + niveau.lignes() + "x" + niveau.colonnes());
-		depart = new Etats(niveau);
-		moves = CalculChemin.Dijkstra(depart);
+		depart = new Etat(niveau);
+		moves = Dijkstra(depart);
 	}
 
 	@Override

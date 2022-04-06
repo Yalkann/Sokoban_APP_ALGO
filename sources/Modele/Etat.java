@@ -1,10 +1,11 @@
-package Structures;
+package Modele;
 
-import Modele.Niveau;
-import Modele.Coup;
 import Structures.FAP;
+import Structures.FAPTableau;
+import Structures.Sequence;
+import Structures.SequenceListe;
 
-public class Etats {
+public class Etat {
     int nbCaisses;
     public int[] positionsCaisses;
     public int positionPousseur;
@@ -12,7 +13,7 @@ public class Etats {
     public Niveau niv;
     public int lastMove;
 
-    public Etats(Niveau n) {
+    public Etat(Niveau n) {
         niv = n.clone();
         int lig = niv.lignes();
         int col = niv.colonnes();
@@ -38,7 +39,7 @@ public class Etats {
         }*/
     }
 
-    public Etats(Etats e){
+    public Etat(Etat e){
 
     }
 
@@ -49,7 +50,7 @@ public class Etats {
         int i,j;
         int caseHaut, caseBas, caseDroite, caseGauche;
         //boolean[] explorees = new boolean[niv.lignes() * niv.colonnes()];
-        FAP<Integer> file = new FAPTableau<Integer>(); 
+        FAP<Integer> file = new FAPTableau<Integer>();
         file.insere(positionPousseur);
         while(!file.estVide()) {
             caseCourante = file.extrait();
@@ -82,7 +83,7 @@ public class Etats {
         }
     }
 
-    boolean estEquivalent(Etats e){
+    boolean estEquivalent(Etat e){
         if(positionPousseur != e.positionPousseur)
             return false;
         for(int i = 0 ; i < nbCaisses ; i++){
@@ -99,8 +100,8 @@ public class Etats {
         return false;
     }
 
-    public Sequence<Etats> successeurs(){
-        Sequence<Etats> succ = new SequenceListe<Etats>();
+    public Sequence<Etat> successeurs(){
+        Sequence<Etat> succ = new SequenceListe<Etat>();
         int caseCourante;
         int lig = niv.lignes();
         int col = niv.colonnes();
@@ -112,15 +113,15 @@ public class Etats {
         caseHaut = caseCourante - col;
         if(caseHaut >= 0){
             if(deplacementsPousseur[caseHaut]){
-
+                //?
             }
             else{
-
+                //?
             }
             Niveau nextNiv1 = niv.clone();
             c = nextNiv1.creerCoup(-1,0);
             nextNiv1.jouer(c);
-            Etats nextEtat1 = new Etats(nextNiv1);
+            Etat nextEtat1 = new Etat(nextNiv1);
             nextEtat1.lastMove = 1;
             succ.insereQueue(nextEtat1);
         }
@@ -130,7 +131,7 @@ public class Etats {
             Niveau nextNiv2 = niv.clone();
             c = nextNiv2.creerCoup(1,0);
             nextNiv2.jouer(c);
-            Etats nextEtat2 = new Etats(nextNiv2);
+            Etat nextEtat2 = new Etat(nextNiv2);
             nextEtat2.lastMove = 2;
             succ.insereQueue(nextEtat2);
         }
@@ -140,7 +141,7 @@ public class Etats {
             Niveau nextNiv3 = niv.clone();
             c = nextNiv3.creerCoup(0,1);
             nextNiv3.jouer(c);
-            Etats nextEtat3 = new Etats(nextNiv3);
+            Etat nextEtat3 = new Etat(nextNiv3);
             nextEtat3.lastMove = 3;
             succ.insereQueue(nextEtat3);
         }
@@ -150,7 +151,7 @@ public class Etats {
             Niveau nextNiv4 = niv.clone();
             c = nextNiv4.creerCoup(0,-1);
             nextNiv4.jouer(c);
-            Etats nextEtat4 = new Etats(nextNiv4);
+            Etat nextEtat4 = new Etat(nextNiv4);
             nextEtat4.lastMove = 4;
             succ.insereQueue(nextEtat4);
         }
