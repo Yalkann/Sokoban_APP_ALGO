@@ -136,6 +136,7 @@ class IAAssistanceStar extends IA {
 		return Math.abs(c1.lig - c2.lig) + Math.abs(c1.col - c2.col);
 	}
 
+	//heuristique
 	int calculCoutMin(Noeud n){
 		int cout = 0;
 		int minPousseurCaisse, minCaisseBut;

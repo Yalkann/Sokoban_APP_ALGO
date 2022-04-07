@@ -121,6 +121,11 @@ public class ControleurMediateur implements CollecteurEvenements {
 			case "Full":
 				vue.toggleFullscreen();
 				break;
+			case "Next":
+				if (IAActive)
+					joueurAutomatique.finalise();
+				jeu.prochainNiveau();
+				break;
 			default:
 				System.out.println("Touche inconnue : " + touche);
 		}
