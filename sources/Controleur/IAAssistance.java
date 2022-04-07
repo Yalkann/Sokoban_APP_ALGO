@@ -27,105 +27,62 @@
 package Controleur;
 
 import Global.Configuration;
+import Modele.Coordonnee;
 import Modele.Coup;
+import Modele.Noeud;
 import Structures.Sequence;
 import Modele.Etat;
 import Structures.SequenceListe;
 
-import java.util.Hashtable;
-import java.util.Random;
+import java.util.*;
 import java.util.logging.Logger;
 
 class IAAssistance extends IA {
-	Random r;
 	Logger logger;
-	Etat depart;
-	Sequence<Integer> moves;
+	Etat etatDepart;
+	Noeud noeudDepart;
+	Sequence<Integer> solution;
+	HashSet<Coordonnee> murs;
+	HashSet<Coordonnee> buts;
+	HashSet<Coordonnee> caissesInit;
+	Coordonnee pousseurInit;
+	boolean resolve = false;
 
 	public IAAssistance() {
-		r = new Random();
-	}
 
-	Sequence<Integer> Dijkstra(Etat start){
-		Hashtable<Etat, Etat> predList = new Hashtable<Etat, Etat>();
-		Sequence<Etat> queue = new SequenceListe<Etat>();
-		Sequence<Integer> moveList = new SequenceListe<Integer>();
-		Sequence<Etat> succ;
-		predList.put(start,start);
-		queue.insereQueue(start);
-		Etat courant, voisin, etatPred;
-		Etat finale = start;
-		boolean gagne = false;
-		while(!queue.estVide()){
-			courant = queue.extraitTete();
-			System.out.println("Calculating state player " + courant.positionPousseur + " box " + courant.positionsCaisses[0]);
-			if(courant.niv.estTermine()){
-				gagne = true;
-				finale = courant;
-				break;
-			}
-			succ = courant.successeurs();
-			while(!succ.estVide()){
-				voisin = succ.extraitTete();
-				if(!predList.containsKey(voisin)){
-					predList.put(voisin,courant);
-					queue.insereQueue(voisin);
-				}
-			}
-		}
-		if(gagne){
-			etatPred = predList.get(finale);
-			moveList.insereTete(finale.lastMove);
-			while(etatPred != predList.get(etatPred)){
-				moveList.insereTete(etatPred.lastMove);
-				etatPred = predList.get(etatPred);
-			}
-		}
-		return moveList;
 	}
 
 	@Override
 	public void initialise() {
 		logger = Configuration.instance().logger();
 		logger.info("Démarrage de l'IA sur un niveau de taille " + niveau.lignes() + "x" + niveau.colonnes());
-		depart = new Etat(niveau);
-		moves = Dijkstra(depart);
 	}
 
 	@Override
 	public Sequence<Coup> joue() {
 		Sequence<Coup> resultat = Configuration.instance().nouvelleSequence();
-		Coup coup = null;
-		boolean mur = true;
-		int dL = 0, dC = 0;
-		int nouveauL = 0;
-		int nouveauC = 0;
+		int moveCode;
 
-		int pousseurL = niveau.lignePousseur();
-		int pousseurC = niveau.colonnePousseur();
-		// Mouvement du pousseur
-		while (mur) {
-			int direction = r.nextInt(2) * 2 - 1;
-			if (r.nextBoolean()) {
-				dL = direction;
-			} else {
-				dC = direction;
-			}
-			nouveauL = pousseurL + dL;
-			nouveauC = pousseurC + dC;
-			coup = niveau.creerCoup(dL, dC);
-			if (coup == null) {
-				if (niveau.aMur(nouveauL, nouveauC))
-					logger.info("Tentative de déplacement (" + dL + ", " + dC + ") heurte un mur");
-				else if (niveau.aCaisse(nouveauL, nouveauC))
-					logger.info("Tentative de déplacement (" + dL + ", " + dC + ") heurte une caisse non déplaçable");
-				else
-					logger.severe("Tentative de déplacement (" + dL + ", " + dC + "), erreur inconnue");
-				dL = dC = 0;
-			} else
-				mur = false;
+		if (!resolve){
+			resolve = true;
+			solution = Dijkstra();
 		}
-		resultat.insereQueue(coup);
+
+		moveCode = solution.extraitTete();
+		switch(moveCode) {
+			case 1: //HAUT
+				resultat.insereQueue(niveau.creerCoup(-1, 0));
+				break;
+			case 2: //BAS
+				resultat.insereQueue(niveau.creerCoup(1, 0));
+				break;
+			case 3: //GAUCHE
+				resultat.insereQueue(niveau.creerCoup(0, -1));
+				break;
+			case 4: //DROITE
+				resultat.insereQueue(niveau.creerCoup(0, 1));
+				break;
+		}
 		return resultat;
 	}
 
@@ -133,4 +90,203 @@ class IAAssistance extends IA {
 	public void finalise() {
 		logger.info("Fin de traitement du niveau par l'IA");
 	}
+
+	boolean etatGagnant(Etat e){
+		for(Coordonnee c : e.caisses){
+			if(!existeDans(buts,c)) return false;
+		}
+		return true;
+	}
+
+	Noeud noeudSucc(Noeud n, int direction){
+		Etat etatSuiv;
+		etatSuiv = etatSuccesseur(n.etatCourant, direction);
+		if(etatSuiv == null) {
+			//System.out.println("Movement to direction "+direction+" blocked");
+			return null;
+		}
+		else return new Noeud(etatSuiv, n, n.distance+1, direction);
+	}
+
+	boolean existeDans(HashSet<Coordonnee> set, Coordonnee c){
+		for(Coordonnee cs : set){
+			if(cs.equals(c)) return true;
+		}
+		return false;
+	}
+
+	boolean etatExiste(HashSet<Etat> set, Etat e){
+		for(Etat es : set){
+			if(es.equals(e)) return true;
+		}
+		return false;
+	}
+
+	Comparator<Noeud> dijkstraComp = new Comparator<Noeud>() {
+		@Override
+		public int compare(Noeud o1, Noeud o2) {
+			return o1.distance - o2.distance;
+		}
+	};
+
+	Sequence<Integer> Dijkstra(){
+		murs = new HashSet<Coordonnee>();
+		buts = new HashSet<Coordonnee>();
+		caissesInit = new HashSet<Coordonnee>();
+		for(int i = 0 ; i < niveau.lignes() ; i++){
+			for(int j = 0 ; j < niveau.colonnes() ; j++){
+				if(niveau.aMur(i,j)) murs.add(new Coordonnee(i,j));
+				if(niveau.aBut(i,j)) buts.add(new Coordonnee(i,j));
+				if(niveau.aCaisse(i,j)) caissesInit.add(new Coordonnee(i,j));
+			}
+		}
+		pousseurInit = new Coordonnee(niveau.lignePousseur(), niveau.colonnePousseur());
+		etatDepart = new Etat(caissesInit, pousseurInit);
+		noeudDepart = new Noeud(etatDepart, null, 0, 0);
+
+		/*
+		for(Coordonnee c : murs){
+			System.out.println("Wall ("+c.lig+","+c.col+")");
+		}
+		*/
+		Sequence<Integer> moves = new SequenceListe<>();
+		boolean gagne = false;
+		HashSet<Etat> dejaVisite = new HashSet<>();
+		Queue<Noeud> queue = new PriorityQueue<>(dijkstraComp);
+		queue.add(noeudDepart);
+		Noeud ndFinale = noeudDepart;
+		while(!queue.isEmpty()){
+			Noeud ndCourant = queue.remove();
+			System.out.println("Visiting node state player ("+ndCourant.etatCourant.pousseur.lig
+				+","+ndCourant.etatCourant.pousseur.col+")");
+			//System.out.println("  and state box ("+ndCourant.etatCourant.caisses.toArray()+")");
+			Etat etatCour = ndCourant.etatCourant;
+			dejaVisite.add(etatCour);
+			if(etatGagnant(etatCour)){
+				gagne = true;
+				ndFinale = ndCourant;
+				break;
+			}
+			for(int i=1 ; i<=4 ; i++) {
+				Noeud ndSucc = noeudSucc(ndCourant, i);
+				if(ndSucc != null){
+					if(!etatExiste(dejaVisite, ndSucc.etatCourant)){
+						queue.add(ndSucc);
+					}
+				}
+			}
+		}
+		if(gagne){
+			while(ndFinale.ndPrecedent != null){
+				moves.insereTete(ndFinale.lastMove);
+				ndFinale = ndFinale.ndPrecedent;
+			}
+		}
+		return moves;
+	}
+
+
+	Etat etatSuccesseur(Etat courant, int direction){
+		int maxLig = niveau.lignes(); int maxCol = niveau.colonnes();
+		Etat res = null;
+		HashSet<Coordonnee> caisses = courant.caisses;
+		Coordonnee nextPousseur, devantCaisse;
+
+		switch(direction) {
+			case 1://HAUT
+				nextPousseur = new Coordonnee(courant.pousseur.lig - 1, courant.pousseur.col);
+				devantCaisse = new Coordonnee(courant.pousseur.lig - 2, courant.pousseur.col);
+				if (nextPousseur.lig >= 0) { //still in map
+					if (!existeDans(murs,nextPousseur)) { // no wall
+						if (existeDans(caisses,nextPousseur) && devantCaisse.lig >= 0) { //is box and front of box still in map
+							if (!existeDans(murs,devantCaisse) && !existeDans(caisses,devantCaisse)) { //front of box free
+								HashSet<Coordonnee> nouvelleCaisses = new HashSet<>();
+								for (Coordonnee c : caisses) {
+									if (!c.equals(nextPousseur))
+										nouvelleCaisses.add(c);
+									else {
+										nouvelleCaisses.add(devantCaisse);
+									}
+								}
+								res = new Etat(nouvelleCaisses, nextPousseur);
+							}
+						} else { //not box or wall
+							res = new Etat(caisses, nextPousseur);
+						}
+					}
+				}
+				break;
+			case 2://BAS
+				nextPousseur = new Coordonnee(courant.pousseur.lig + 1, courant.pousseur.col);
+				devantCaisse = new Coordonnee(courant.pousseur.lig + 2, courant.pousseur.col);
+				if (nextPousseur.lig <= maxLig) { //still in map
+					if (!existeDans(murs,nextPousseur)) { // no wall
+						if (existeDans(caisses,nextPousseur) && devantCaisse.lig <= maxLig) { //is box and front of box still in map
+							if (!existeDans(murs,devantCaisse) && !existeDans(caisses,devantCaisse)) { //front of box free
+								HashSet<Coordonnee> nouvelleCaisses = new HashSet<>();
+								for (Coordonnee c : caisses) {
+									if (!c.equals(nextPousseur))
+										nouvelleCaisses.add(c);
+									else {
+										nouvelleCaisses.add(devantCaisse);
+									}
+								}
+								res = new Etat(nouvelleCaisses, nextPousseur);
+							}
+						} else { //not box
+							res = new Etat(caisses, nextPousseur);
+						}
+					}
+				}
+				break;
+			case 3://GAUCHE
+				nextPousseur = new Coordonnee(courant.pousseur.lig, courant.pousseur.col - 1);
+				devantCaisse = new Coordonnee(courant.pousseur.lig, courant.pousseur.col - 2);
+				if (nextPousseur.col >= 0) { //still in map
+					if (!existeDans(murs, nextPousseur)) { // no wall
+						if (existeDans(caisses, nextPousseur) && devantCaisse.col >= 0) { //is box and front of box still in map
+							if (!existeDans(murs, devantCaisse) && !existeDans(caisses, devantCaisse)) { //front of box free
+								HashSet<Coordonnee> nouvelleCaisses = new HashSet<>();
+								for (Coordonnee c : caisses) {
+									if (!c.equals(nextPousseur))
+										nouvelleCaisses.add(c);
+									else {
+										nouvelleCaisses.add(devantCaisse);
+									}
+								}
+								res = new Etat(nouvelleCaisses, nextPousseur);
+							}
+						} else { //not box
+							res = new Etat(caisses, nextPousseur);
+						}
+					}
+				}
+				break;
+			case 4://DROITE
+				nextPousseur = new Coordonnee(courant.pousseur.lig, courant.pousseur.col + 1);
+				devantCaisse = new Coordonnee(courant.pousseur.lig, courant.pousseur.col + 2);
+				if (nextPousseur.col <= maxCol) { //still in map
+					if (!existeDans(murs, nextPousseur)) { // no wall
+						if (existeDans(caisses, nextPousseur) && devantCaisse.col <= maxCol) { //is box and front of box still in map
+							if (!existeDans(murs, devantCaisse) && !existeDans(caisses, devantCaisse)) { //front of box free
+								HashSet<Coordonnee> nouvelleCaisses = new HashSet<>();
+								for (Coordonnee c : caisses) {
+									if (!c.equals(nextPousseur))
+										nouvelleCaisses.add(c);
+									else {
+										nouvelleCaisses.add(devantCaisse);
+									}
+								}
+								res = new Etat(nouvelleCaisses, nextPousseur);
+							}
+						} else { //not box
+							res = new Etat(caisses, nextPousseur);
+						}
+					}
+				}
+				break;
+		}
+		return res;
+	}
+
 }
