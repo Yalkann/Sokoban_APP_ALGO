@@ -34,10 +34,7 @@ import Modele.Noeud;
 import Structures.Sequence;
 import Structures.SequenceListe;
 
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.PriorityQueue;
-import java.util.Queue;
+import java.util.*;
 import java.util.logging.Logger;
 
 class IAAssistanceStar extends IA {
@@ -118,7 +115,7 @@ class IAAssistanceStar extends IA {
 			//System.out.println("Movement to direction "+direction+" blocked");
 			return null;
 		}
-		else return new Noeud(etatSuiv, n, n.distance+1, direction);
+		else return new Noeud(etatSuiv, n, calculCoutMin(n), direction);
 	}
 
 	boolean existeDans(HashSet<Coordonnee> set, Coordonnee c){
@@ -139,7 +136,29 @@ class IAAssistanceStar extends IA {
 		return Math.abs(c1.lig - c2.lig) + Math.abs(c1.col - c2.col);
 	}
 
-	Comparator<Noeud> dijkstraComp = new Comparator<Noeud>() {
+	int calculCoutMin(Noeud n){
+		int cout = 0;
+		int minPousseurCaisse, minCaisseBut;
+		minPousseurCaisse = Integer.MAX_VALUE;
+		//closest box to player
+		for(Coordonnee cb : buts){
+			int dist = manhattanDist(n.etatCourant.pousseur,cb);
+			if(dist < minPousseurCaisse) minPousseurCaisse = dist;
+		}
+		cout += minPousseurCaisse;
+		//boxes to closest goal
+		for(Coordonnee c : n.etatCourant.caisses){
+			minCaisseBut = Integer.MAX_VALUE;
+			for(Coordonnee cb : buts){
+				int dist = manhattanDist(c,cb);
+				if(dist < minCaisseBut) minCaisseBut = dist;
+			}
+			cout += minCaisseBut;
+		}
+		return cout;
+	}
+
+	Comparator<Noeud> AStarComp = new Comparator<Noeud>() {
 		@Override
 		public int compare(Noeud o1, Noeud o2) {
 			return o1.distance - o2.distance;
@@ -164,7 +183,7 @@ class IAAssistanceStar extends IA {
 		Sequence<Integer> moves = new SequenceListe<>();
 		boolean gagne = false;
 		HashSet<Etat> dejaVisite = new HashSet<>();
-		Queue<Noeud> queue = new PriorityQueue<>(dijkstraComp);
+		Queue<Noeud> queue = new PriorityQueue<>(AStarComp);
 		queue.add(noeudDepart);
 		Noeud ndFinale = noeudDepart;
 		while(!queue.isEmpty()){
