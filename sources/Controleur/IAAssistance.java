@@ -64,30 +64,40 @@ class IAAssistance extends IA {
 		int moveCode;
 
 		if (!resolve){
-			resolve = true;
 			solution = Dijkstra();
+			resolve = true;
 		}
-
-		moveCode = solution.extraitTete();
-		switch(moveCode) {
-			case 1: //HAUT
-				resultat.insereQueue(niveau.creerCoup(-1, 0));
-				break;
-			case 2: //BAS
-				resultat.insereQueue(niveau.creerCoup(1, 0));
-				break;
-			case 3: //GAUCHE
-				resultat.insereQueue(niveau.creerCoup(0, -1));
-				break;
-			case 4: //DROITE
-				resultat.insereQueue(niveau.creerCoup(0, 1));
-				break;
+		if(solution.estVide()){
+			logger.info("Pas de solution");
+			finalise();
+			return null;
+		} else {
+			moveCode = solution.extraitTete();
+			switch (moveCode) {
+				case 1: //HAUT
+					logger.info("Deplacement vers la case (" + (niveau.lignePousseur() - 1) + "," + niveau.colonnePousseur() + ")");
+					resultat.insereQueue(niveau.creerCoup(-1, 0));
+					break;
+				case 2: //BAS
+					logger.info("Deplacement vers la case (" + (niveau.lignePousseur() + 1) + "," + niveau.colonnePousseur() + ")");
+					resultat.insereQueue(niveau.creerCoup(1, 0));
+					break;
+				case 3: //GAUCHE
+					logger.info("Deplacement vers la case (" + niveau.lignePousseur() + "," + (niveau.colonnePousseur() - 1) + ")");
+					resultat.insereQueue(niveau.creerCoup(0, -1));
+					break;
+				case 4: //DROITE
+					logger.info("Deplacement vers la case (" + niveau.lignePousseur() + "," + (niveau.colonnePousseur() + 1) + ")");
+					resultat.insereQueue(niveau.creerCoup(0, 1));
+					break;
+			}
 		}
 		return resultat;
 	}
 
 	@Override
 	public void finalise() {
+		resolve = false;
 		logger.info("Fin de traitement du niveau par l'IA");
 	}
 
@@ -157,9 +167,6 @@ class IAAssistance extends IA {
 		Noeud ndFinale = noeudDepart;
 		while(!queue.isEmpty()){
 			Noeud ndCourant = queue.remove();
-			System.out.println("Visiting node state player ("+ndCourant.etatCourant.pousseur.lig
-				+","+ndCourant.etatCourant.pousseur.col+")");
-			//System.out.println("  and state box ("+ndCourant.etatCourant.caisses.toArray()+")");
 			Etat etatCour = ndCourant.etatCourant;
 			dejaVisite.add(etatCour);
 			if(etatGagnant(etatCour)){
