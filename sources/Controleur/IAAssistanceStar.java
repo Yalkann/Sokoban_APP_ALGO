@@ -29,15 +29,18 @@ package Controleur;
 import Global.Configuration;
 import Modele.Coordonnee;
 import Modele.Coup;
+import Modele.Etat;
 import Modele.Noeud;
 import Structures.Sequence;
-import Modele.Etat;
 import Structures.SequenceListe;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.logging.Logger;
 
-class IAAssistance extends IA {
+class IAAssistanceStar extends IA {
 	Logger logger;
 	Etat etatDepart;
 	Noeud noeudDepart;
@@ -48,7 +51,7 @@ class IAAssistance extends IA {
 	Coordonnee pousseurInit;
 	boolean resolve = false;
 
-	public IAAssistance() {
+	public IAAssistanceStar() {
 
 	}
 
@@ -64,7 +67,7 @@ class IAAssistance extends IA {
 		int moveCode;
 
 		if (!resolve){
-			solution = Dijkstra();
+			solution = AStar();
 			resolve = true;
 		}
 		if(solution.estVide()){
@@ -132,6 +135,10 @@ class IAAssistance extends IA {
 		return false;
 	}
 
+	int manhattanDist(Coordonnee c1, Coordonnee c2){
+		return Math.abs(c1.lig - c2.lig) + Math.abs(c1.col - c2.col);
+	}
+
 	Comparator<Noeud> dijkstraComp = new Comparator<Noeud>() {
 		@Override
 		public int compare(Noeud o1, Noeud o2) {
@@ -139,7 +146,7 @@ class IAAssistance extends IA {
 		}
 	};
 
-	Sequence<Integer> Dijkstra(){
+	Sequence<Integer> AStar(){
 		murs = new HashSet<Coordonnee>();
 		buts = new HashSet<Coordonnee>();
 		caissesInit = new HashSet<Coordonnee>();
@@ -186,7 +193,6 @@ class IAAssistance extends IA {
 		}
 		return moves;
 	}
-
 
 	Etat etatSuccesseur(Etat courant, int direction){
 		int maxLig = niveau.lignes(); int maxCol = niveau.colonnes();
